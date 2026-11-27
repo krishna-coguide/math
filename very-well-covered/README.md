@@ -52,6 +52,20 @@ In particular, $s_{3738}>s_{3789}<s_{3840}$. If a mode were at or before 3789, t
 
 [check_coefficients.py](check_coefficients.py) evaluates the displayed binomial sum with Python integers. Run `python very-well-covered/check_coefficients.py` from the repository root to reproduce the table and check the strict comparisons on the unscaled counts.
 
+## Lean verification
+
+[`VeryWellCovered.counterexample`](VeryWellCovered/Answer.lean) proves the result for the concrete finite simple graph above. It includes both vertex counts, the base independence number, connectedness, very well-coveredness, and failure of unimodality. In the same file, `VeryWellCovered.whisker_core_valley` states the two strict inequalities for counts of actual independent sets. The [leaf-attachment bijection](VeryWellCovered/Graph.lean), [count on the base join](VeryWellCovered/Core.lean), and [exact integer comparison](VeryWellCovered/Coefficients.lean) are all part of the Lean proof. It does not assume the Python output.
+
+From `very-well-covered/`, using the pinned Lean and Mathlib versions, run:
+
+```sh
+lake exe cache get
+lake build
+lake env lean CheckAnswer.lean
+```
+
+The last command reports axioms for the public result and its dependencies.
+
 ## What this answers
 
 - V. E. Levit and E. Mandrescu, [*A family of well-covered graphs with unimodal independence polynomials*](https://arxiv.org/abs/math/0307012) (2003), end of §3, ask the one-leaf-per-vertex question above after proving the cases $\alpha(G)\le4$. The bound is on the **base**, not its leafy extension. S.-Y. Chen and H.-J. Wang later extended the positive result to $\alpha(G)\le8$ (*Ars Combinatoria* 97A (2010), 509–529), as reported by [Brown and Cameron](https://arxiv.org/abs/1709.08236), introduction.
