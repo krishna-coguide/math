@@ -11,7 +11,7 @@ import numpy as np
 
 from audit import N, LIMIT, is_ap
 
-BOUND = 101
+BOUND = 99
 
 
 def indices(bits: int) -> Iterator[int]:
@@ -41,7 +41,8 @@ RANK = Cut("rank")
 
 
 class Search:
-    def __init__(self, library: Path):
+    def __init__(self, library: Path, cap: int):
+        self.cap = cap
         self.coloring = ct.CDLL(str(library)).color_api
         self.coloring.argtypes = [
             ct.POINTER(ct.c_int32),
@@ -80,7 +81,7 @@ class Search:
         return (
             92
             + sum(bool(pool & s) for s in self.sup)
-            + min(4, (pool & self.zero_bits).bit_count())
+            + min(self.cap, (pool & self.zero_bits).bit_count())
             <= BOUND
             or any(not (pool & self.sup[j]) for j in indices(required))
             or any(not (pool & omit) for omit in self.omit)
@@ -178,7 +179,7 @@ class Search:
             BOUND
             + 1
             - 92
-            - required.bit_count()
+            - sum(bool(pool & s) for s in self.sup)
             - sum(a in self.zero for a in selected)
         )
         if zneed > 0:
@@ -218,6 +219,37 @@ class Search:
             self.refine(pool & ~one, required, selected),
         )
 
+    def support_tree(self, support: list[int]) -> Cut:
+        pool = self.nontrivial
+        known = 0
+        for a in support:
+            pool &= self.neighbors(a) | (1 << a)
+            known |= self.active[a]
+
+        def visit(pool: int, req: int, open_bits: int) -> Cut:
+            if self.auto(pool, req):
+                return RANK
+            options = [j for j in indices(open_bits) if pool & self.sup[j]]
+            if pool.bit_count() > 750 and options:
+                j = max(options, key=lambda i: (pool & ~self.trace[i]).bit_count())
+                left = open_bits ^ (1 << j)
+                return split(
+                    "tok",
+                    self.positive[j],
+                    visit(pool & self.trace[j], req | (1 << j), left),
+                    visit(pool & ~self.sup[j], req, left),
+                )
+            return self.refine(pool, req, tuple(support))
+
+        tree = visit(pool, 0, ((1 << len(self.positive)) - 1) & ~known)
+        return self.exclude_trivial(tree)
+
+    @staticmethod
+    def exclude_trivial(node: Cut) -> Cut:
+        for a in reversed([0] + [1 << i for i in range(N)]):
+            node = split("mem", a, RANK, node)
+        return node
+
     def tree(self) -> Cut:
         def visit(pool: int, req: int, i: int) -> Cut:
             if self.auto(pool, req):
@@ -231,8 +263,4 @@ class Search:
                 visit(pool & ~self.sup[i], req, i + 1),
             )
 
-        node = visit(self.nontrivial, 0, 0)
-        # Do not assume that the empty set and singletons are absent.
-        for a in reversed([0] + [1 << i for i in range(N)]):
-            node = split("mem", a, RANK, node)
-        return node
+        return self.exclude_trivial(visit(self.nontrivial, 0, 0))
