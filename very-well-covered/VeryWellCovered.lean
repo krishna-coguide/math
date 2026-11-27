@@ -1,3 +1,3 @@
 module
 
-public import VeryWellCovered.Defs
+public import VeryWellCovered.Answer
