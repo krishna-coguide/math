@@ -1,4 +1,4 @@
-import Erdos272.FullRank
+import Erdos272.NeutralBound
 import Erdos272.Projection
 import Erdos272.Construction
 
@@ -32,7 +32,7 @@ private theorem sub_point_false {a : Mask} {i : Fin 14} (ha : a.getLsbD i = fals
   contradiction
 
 def autoCut (K P : Nat) (req : List Mask) : Bool :=
-  decide (92 + posLong.countP (live P) + zeroLong.countP (fun a => P.testBit a.toNat) ≤ K) ||
+  decide (92 + posLong.countP (live P) + min 4 (zeroLong.countP (fun a => P.testBit a.toNat)) ≤ K) ||
   req.any (fun t => !live P t) || (List.finRange 14).any (noOmitter P)
 
 theorem auto_sound {K P : Nat} {req : List Mask} (h : autoCut K P req = true) : Safe K P req := by
@@ -49,7 +49,7 @@ theorem auto_sound {K P : Nat} {req : List Mask} (h : autoCut K P req = true) : 
       · simpa only [← List.countP_eq_length_filter] using (List.toFinset_card_le (l := zeroLong.filter (fun a => P.testBit a.toNat)))
       · intro a ha; obtain ⟨hF,hz⟩ := Finset.mem_inter.mp ha
         exact List.mem_toFinset.mpr (List.mem_filter.mpr ⟨List.mem_toFinset.mp hz,hp a hF⟩)
-    have hh := mobius_cost_bound F hf hn; omega
+    have hh := Neutral.capped_mobius_cost F hf hn; omega
   · obtain ⟨a,ha,hs⟩ := hr t ht
     simp [live_of (hp a ha) hs] at hm
   · obtain ⟨a,ha,hs⟩ := hn i
