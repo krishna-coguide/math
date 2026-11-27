@@ -31,11 +31,19 @@ private theorem sub_point_false {a : Mask} {i : Fin 14} (ha : a.getLsbD i = fals
   rw [BitVec.getLsbD_eq_getElem i.isLt, he] at ha
   contradiction
 
-def autoCut (K P : Nat) (req : List Mask) : Bool :=
-  decide (92 + posLong.countP (live P) + min 4 (zeroLong.countP (fun a => P.testBit a.toNat)) ≤ K) ||
+/-- The cardinality bound used at rank leaves, needed only above the search target. -/
+def RankBound (K cap : Nat) : Prop := ∀ F : Finset Mask, Valid F →
+    (∀ x : Fin 14, ∃ a ∈ F, a.getLsbD x = false) → K < F.card →
+    F.card ≤ 92 + (activeLong F).length + min cap (F ∩ zeroLong.toFinset).card
+
+theorem rankBoundFour (K : Nat) : RankBound K 4 :=
+  fun F hf hn _ => Neutral.capped_mobius_cost F hf hn
+
+def autoCut (cap K P : Nat) (req : List Mask) : Bool :=
+  decide (92 + posLong.countP (live P) + min cap (zeroLong.countP (fun a => P.testBit a.toNat)) ≤ K) ||
   req.any (fun t => !live P t) || (List.finRange 14).any (noOmitter P)
 
-theorem auto_sound {K P : Nat} {req : List Mask} (h : autoCut K P req = true) : Safe K P req := by
+theorem auto_sound {cap K P : Nat} {req : List Mask} (rk : RankBound K cap) (h : autoCut cap K P req = true) : Safe K P req := by
   intro F hf hn hp hr
   simp only [autoCut,Bool.or_eq_true,decide_eq_true_eq,List.any_eq_true] at h
   rcases h with (h | ⟨t,ht,hm⟩) | ⟨i,_,hi⟩
@@ -49,7 +57,9 @@ theorem auto_sound {K P : Nat} {req : List Mask} (h : autoCut K P req = true) : 
       · simpa only [← List.countP_eq_length_filter] using (List.toFinset_card_le (l := zeroLong.filter (fun a => P.testBit a.toNat)))
       · intro a ha; obtain ⟨hF,hz⟩ := Finset.mem_inter.mp ha
         exact List.mem_toFinset.mpr (List.mem_filter.mpr ⟨List.mem_toFinset.mp hz,hp a hF⟩)
-    have hh := Neutral.capped_mobius_cost F hf hn; omega
+    by_cases hsmall : F.card ≤ K
+    · exact hsmall
+    · have hh := rk F hf hn (by omega); omega
   · obtain ⟨a,ha,hs⟩ := hr t ht
     simp [live_of (hp a ha) hs] at hm
   · obtain ⟨a,ha,hs⟩ := hn i
@@ -93,5 +103,22 @@ theorem member {K P req} (a : Mask) (hy : Safe K (yesMem P a) req)
   · apply hn F hf hstar _ hr; intro b hb
     have he : a ≠ b := fun e => ha (e.symm ▸ hb)
     simp [noMem,Nat.testBit_and,Nat.testBit_xor,BitVec.toNat_inj,he,board_bit,hp b hb]
+
+/-- The pool obtained by requiring each listed mask to be a family member. -/
+def seeded : List Mask → Nat
+  | [] => board
+  | a :: s => yesMem (seeded s) a
+
+theorem seeded_covers {F : Finset Mask} (hf : Valid F) {s : List Mask}
+    (hs : ∀ t ∈ s, t ∈ F) : ∀ a ∈ F, (seeded s).testBit a.toNat = true := by
+  induction s with
+  | nil => exact fun a _ => board_bit a
+  | cons t s ih =>
+    intro a ha
+    have hp := ih (fun v hv => hs v (List.mem_cons_of_mem _ hv)) a ha
+    by_cases he : t = a
+    · subst t; simp [seeded,yesMem,Nat.testBit_and,Nat.testBit_or,hp]
+    · simp [seeded,yesMem,Nat.testBit_and,Nat.testBit_or,apRow_bit,hp,
+        hf t (hs _ List.mem_cons_self) a ha he]
 
 end E272.Search
