@@ -68,7 +68,7 @@ The precise hypotheses and the signed-weight argument are in [RankLocal](Erdos27
 
 ## A numerical upper bound
 
-The algebraic proof alone bounds the unrestricted maximum by 119. It gives a more useful bound when we track which progressions occur.
+The first rank estimate bounds the unrestricted maximum by 119. It gives a more useful bound when we track which progressions occur.
 For a family with no common point, let $h$ count the distinct 7- or 11-term APs contained in some member, and let $z$ count the 9-, 10-, or 13-term APs that **are themselves members**.
 Then $|F|\leq 92+h+z$ (`E272.mobius_cost_bound`).
 There are only 14 possible progressions in the first count and 13 in the second.
@@ -99,6 +99,21 @@ A valid family can take at most one set from each color.
 [Search](Erdos272/Search.lean) proves the case splits are exhaustive, [ColorProof](Erdos272/ColorProof.lean) checks the classes and their coverage, and [Certificate](Erdos272/Certificate.lean) joins these proofs.
 The certificate starts with every subset available and no required progression. It does not assume a successful search, an absent singleton, or a chosen anchor.
 
+### A refinement for the next bound
+
+A separate algebraic argument sharpens the rank estimate for a family with no common point to
+
+$$
+|F|\leq 92+h+\min(4,z).
+$$
+
+Here $h$ and $z$ are the same counts as above. Since $h\leq14$, this gives 110 even without the coloring certificates. [NeutralBound](Erdos272/NeutralBound.lean) proves this by adding four linear checks on the zero-weight APs.
+A nonzero rational dependence would give a nonzero parity pattern; [NeutralCover](Erdos272/NeutralCover.lean) verifies that every such pattern forces incompatible members or a common point.
+[FourSharp](Erdos272/FourSharp.lean) gives a valid 30-member example with four independent dependencies in the uncorrected feature matrix.
+This is sharpness of the **four-column rank correction**, not sharpness of 103 for the original question.
+[ActiveWindows](Erdos272/ActiveWindows.lean) also improves the restricted bound of 102 above to 101 under the same exclusions.
+These results are not assumptions of the 103 certificate. They can be used to discard more cases when testing smaller targets.
+
 ## What remains
 
 No 96-member family was found, and none of the theorems excludes **all** such families.
@@ -120,6 +135,10 @@ python audit.py
 python generate_bound.py
 lake build Erdos272Bounds
 lake env lean CheckBound.lean
+
+# Optional: the separate four-column refinement and its scope.
+lake build Erdos272.NeutralBound Erdos272.FourSharp Erdos272.ActiveWindows
+lake env lean CheckRefinement.lean
 ```
 
 [`generate_bound.py`](generate_bound.py) uses the project Python and a C++20 compiler to propose certificates, then writes the Lean source under the ignored `.lake/proof-src/`. No generated build artifacts need to be committed. The generator is not a verifier: an invalid coloring or an uncovered branch fails the Lean build. The proof is split over eight modules to allow parallel checking.
