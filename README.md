@@ -1,6 +1,6 @@
 # math
 
-Mathematics in Markdown, Lean 4, and Python. Contributors and agents start
+Mathematics in Markdown, LaTeX, Lean 4, and Python. Contributors and agents start
 with [AGENTS.md](AGENTS.md).
 
 ## Layout
@@ -22,7 +22,8 @@ nix develop
 
 It provides Python 3 with numpy, scipy, sympy, mpmath, networkx, pandas,
 matplotlib, z3, pytest, hypothesis and IPython; ruff, pyright, uv; elan for
-Lean 4 and Lake; markdownlint-cli2, Pandoc and Typst; Git, GitHub CLI, the
+Lean 4 and Lake; markdownlint-cli2, Pandoc and Typst; all of TeX Live
+(LuaLaTeX, latexmk, biber, chktex), tex-fmt and texlab; Git, GitHub CLI, the
 usual shell tools, and Prime Agent (`prime`, `tools-update`). Everything runs
 locally; GitHub is the only remote service.
 

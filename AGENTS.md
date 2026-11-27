@@ -2,8 +2,9 @@
 
 ## Mission and authority
 
-This repository is for mathematics: notes and write-ups in Markdown, formal
-proofs in Lean 4, and computation and experiments in Python. It runs fully
+This repository is for mathematics: notes in Markdown, papers and longer
+write-ups in LaTeX, formal proofs in Lean 4, and computation and experiments
+in Python. It runs fully
 locally; GitHub is the only remote service.
 
 Act like an owner. Finish the requested outcome, repair problems you find in
@@ -171,6 +172,9 @@ It provides:
   `hypothesis`, `ipython`; `ruff` (lint, format), `pyright` (types); `uv`.
 - **Lean 4**: `elan`, with `lean` and `lake` as elan proxies.
 - **Markdown**: `markdownlint-cli2`, `pandoc`, `typst`.
+- **LaTeX**: all of TeX Live (`lualatex`, `xelatex`, `pdflatex`, `latexmk`,
+  `biber`/biblatex, `chktex`, `latexindent`, every CTAN package); `tex-fmt`;
+  `texlab`.
 - **Tools**: `git`, `gh`, `ripgrep`, `fd`, `jq`, `curl`, `zip`/`unzip`,
   `nixfmt`, coreutils and friends; Prime Agent (`prime`, `tools-update`).
 
@@ -232,28 +236,54 @@ nix flake update nixpkgs        # deliberately, then review and commit flake.loc
 
 ## Markdown
 
-- Math typesetting: full GitHub-compatible KaTeX is allowed. Use any of
-  GitHub's math syntaxes:
+- Math typesetting: full GitHub-compatible MathJax is allowed (GitHub renders
+  Markdown math with MathJax). Use any of GitHub's math syntaxes:
   - inline `$...$`, or ``$`...`$`` when the expression contains characters
     Markdown would otherwise interpret (`_`, `*`, `\`, `|`);
   - display `$$...$$` on its own lines, or a fenced ` ```math ` block;
-  - any KaTeX-supported command or environment (`aligned`, `cases`,
+  - any command or environment GitHub's MathJax supports (`aligned`, `cases`,
     `pmatrix`, `\operatorname`, `\mathbb`, `\tag`, and so on).
 
-  Write for GitHub's renderer: no custom macro packages, no `\newcommand`
+  Write for GitHub's renderer: no LaTeX packages, no `\newcommand`
   shared across blocks, and no raw HTML for math. Check a note on GitHub
-  (or in the PR's rich diff) when its math is complex.
+  (or in the PR's rich diff) when its math is complex. Material that needs
+  real LaTeX (packages, theorem environments, TikZ, a bibliography) is a
+  `.tex` document instead ([LaTeX](#latex)).
 - One idea per paragraph; headings for structure; definitions, statements, and
   proofs clearly marked (`**Theorem.**`, `**Proof.**`, ending with ∎).
 - Link a note to the Lean declaration and Python script that back it, by
   repository path.
 - PDF: read the note as GitHub Markdown (`-f gfm`) so all the math syntaxes
-  above parse. Pandoc's Typst template needs an explicit font; Typst bundles
-  New Computer Modern:
+  above parse. Through LaTeX (best math), or through Typst (fast; Pandoc's
+  Typst template needs an explicit font, and Typst bundles New Computer
+  Modern):
 
   ```bash
+  pandoc -f gfm note.md -o note.pdf --pdf-engine=lualatex
   pandoc -f gfm note.md -o note.pdf --pdf-engine=typst -V mainfont="New Computer Modern"
   ```
+
+## LaTeX
+
+- Modern LaTeX: compile with LuaLaTeX through latexmk; UTF-8 source;
+  `unicode-math` for fonts (not `inputenc`/`fontenc`); `amsmath`, `amsthm`,
+  `mathtools`; `biblatex` with the `biber` backend (not BibTeX); `hyperref`
+  then `cleveref` (loaded last) for references. Prefer `\(...\)` and
+  `\[...\]` or `equation`/`align` over `$$...$$`.
+- Every TeX Live package is already installed; never use `tlmgr`.
+- Build, from the document's directory, with output kept out of the source:
+
+  ```bash
+  latexmk -lualatex -interaction=nonstopmode -halt-on-error -outdir=build <doc>.tex
+  ```
+
+  `build/` is ignored; commit the `.tex`, `.bib`, and figure sources, not the
+  PDF, unless the user asks for it. A build is clean when the log has no
+  undefined references or citations and no overfull boxes you did not accept.
+- Lint with `chktex -q <doc>.tex`; format with `tex-fmt <doc>.tex`
+  (`tex-fmt --check` in validation). Keep one sentence per line so diffs
+  stay readable.
+- Bibliography entries carry a DOI or URL where there is one.
 
 ## Validation
 
@@ -267,6 +297,7 @@ ruff check . && ruff format --check .
 pyright
 pytest
 (cd <lake-project> && lake build)          # with no `sorry` warnings
+latexmk -lualatex -halt-on-error -outdir=build <doc>.tex && chktex -q <doc>.tex && tex-fmt --check <doc>.tex
 nix fmt -- --check flake.nix               # when flake.nix changed
 ```
 
@@ -292,7 +323,7 @@ Commit completed work in the worktree. Always disable GPG signing:
 git commit --no-gpg-sign -m "<lowercase-scope>: <imperative summary>"
 ```
 
-Scopes: `notes:`, `lean:`, `py:`, `nix:`, `deps:`, `docs:` (this file, README),
+Scopes: `notes:`, `tex:`, `lean:`, `py:`, `nix:`, `deps:`, `docs:` (this file, README),
 or a topic name when it is clearer.
 
 Before committing:
