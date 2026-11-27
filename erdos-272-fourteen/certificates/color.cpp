@@ -80,6 +80,7 @@ extern "C" int color_api(const int *vs, int n, int K, int iters, int seed,
     cost += hits[i * K + col[i]];
   cost /= 2;
   int best = cost;
+  vector<int> best_colors = col;
   for (int t = 1; t <= iters && cost; t++) {
     int bv = -1, bc = -1, bd = 100000, conf = 0, ties = 0;
     for (int v = 0; v < n; v++) {
@@ -113,11 +114,16 @@ extern "C" int color_api(const int *vs, int n, int K, int iters, int seed,
       hits[u * K + bc]++;
     }
     cost += bd;
-    best = min(best, cost);
+    if (cost < best) {
+      best = cost;
+      best_colors = col;
+    }
   }
   if (cost == 0) {
     copy(col.begin(), col.end(), out);
     return K;
   }
-  return 0;
+  // A near-coloring gives a colorable branch after dropping conflict endpoints.
+  copy(best_colors.begin(), best_colors.end(), out);
+  return -best;
 }
