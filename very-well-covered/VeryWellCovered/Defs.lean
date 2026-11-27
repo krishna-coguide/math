@@ -13,6 +13,15 @@ namespace VeryWellCovered
 noncomputable def independentCount {V : Type*} [Fintype V] (G : SimpleGraph V) (k : ℕ) : ℕ := by
   classical exact (G.indepSetFinset k).card
 
+/-- The count is independent of the decidability instances used to enumerate the sets. -/
+theorem independentCount_eq_card {V : Type*} [Fintype V] (G : SimpleGraph V)
+    [DecidableEq V] [DecidableRel G.Adj] (k : ℕ) :
+    independentCount G k = (G.indepSetFinset k).card := by
+  unfold independentCount
+  congr 1
+  ext s
+  simp only [SimpleGraph.mem_indepSetFinset_iff]
+
 /-- Choose `j` old vertices and supplement them with `k-j` eligible leaves. -/
 def leafyCount (n : ℕ) (a : ℕ → ℕ) (k : ℕ) : ℕ :=
   ∑ j ∈ Finset.range (k + 1), a j * (n - j).choose (k - j)
