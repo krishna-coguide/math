@@ -5,12 +5,16 @@ Run from any directory with the repository's Nix-shell Python, then run
 certificate is trusted: every generated leaf is checked inside Lean.
 """
 
+from argparse import ArgumentParser
 import json
 import os
 from pathlib import Path
 import subprocess
 
-from certificates.search import BOUND, Cut, Search
+from certificates.search import Cut, Search
+
+SUPPORT_BOUND = 95
+BOUND = 99
 
 
 def term(node: Cut) -> str:
@@ -27,19 +31,20 @@ def write_forest(
     source: Path,
     name: str,
     cap: int,
+    bound: int,
     trees: list[tuple[str, Cut]],
 ) -> None:
     package = source / "Erdos272Bounds" / name
     package.mkdir(parents=True, exist_ok=True)
     module = f"Erdos272Bounds.{name}"
-    ns = f"E272.Search.Run{BOUND}.{name}"
+    ns = f"E272.Search.Run{bound}.{name}"
     definitions: list[str] = []
     leaves: list[str] = []
     joins: list[str] = []
     serial = 0
     # Zero allowance is conditional until the two forests are joined.
-    binder = f" (rk : RankBound {BOUND} 0)" if cap == 0 else ""
-    rk = "rk" if cap == 0 else f"(rankBoundFour {BOUND})"
+    binder = f" (rk : RankBound {bound} 0)" if cap == 0 else ""
+    rk = "rk" if cap == 0 else f"(rankBoundFour {bound})"
 
     def emit(node: Cut, pool: str, req: str) -> str:
         nonlocal serial
@@ -47,7 +52,7 @@ def write_forest(
         serial += 1
         cut = f"cut{key}"
         if node.work < 2000 or node.children is None:
-            proof = f"verified {cap} {BOUND} {pool} {req} {term(node)} {rk} (by decide +kernel)"
+            proof = f"verified {cap} {bound} {pool} {req} {term(node)} {rk} (by decide +kernel)"
             dest = leaves
         else:
             a = node.value
@@ -65,24 +70,23 @@ def write_forest(
                 else f"member {a} {yes} {no}"
             )
             dest = joins
-        dest.append(f"theorem {cut}{binder} : Safe {BOUND} {pool} {req} := {proof}")
+        dest.append(f"theorem {cut}{binder} : Safe {bound} {pool} {req} := {proof}")
         return f"({cut} rk)" if cap == 0 else cut
 
     roots = [emit(tree, pool, "[]") for pool, tree in trees]
     if cap == 0:
-        joins.append(f"theorem bounded{binder} : Safe {BOUND} board [] := {roots[0]}")
+        joins.append(f"theorem bounded{binder} : Safe {bound} board [] := {roots[0]}")
     else:
         joins.append(
-            f"theorem bounded : ∀ s ∈ Neutral.kernelSupports, Safe {BOUND} (seeded s) [] := by\n"
+            f"theorem bounded : ∀ s ∈ Neutral.kernelSupports, Safe {bound} (seeded s) [] := by\n"
             "  simp only [Neutral.kernelSupports, List.forall_mem_cons]\n"
             + "  exact ⟨"
             + ", ".join(roots)
             + ", List.forall_mem_nil _⟩"
         )
     write_module(package / "States.lean", ns, ["Erdos272.Certificate"], definitions)
-    # Each forest is independent of the other. Four parts each let Lake check
-    # both forests concurrently without changing any mathematical assumptions.
-    count = 4
+    # Independent batches affect build scheduling only.
+    count = 12
     batches: list[list[str]] = [[] for _ in range(count)]
     cost = [0] * count
     for leaf in sorted(leaves, key=len, reverse=True):
@@ -130,39 +134,55 @@ def main() -> None:
         ],
         check=True,
     )
-    subprocess.run(["lake", "build", "Erdos272.KernelSupports"], cwd=root, check=True)
-    output = subprocess.check_output(
-        ["lake", "env", "lean", "--run", "certificates/PrintSupports.lean"],
-        cwd=root,
-        text=True,
-    )
-    supports: list[list[int]] = json.loads(output)
-    support_search = Search(library, 4)
-    write_forest(
-        source,
-        "Patterns",
-        4,
-        [(f"(seeded {s})", support_search.support_tree(s)) for s in supports],
-    )
-    write_forest(source, "Cases", 0, [("board", Search(library, 0).tree())])
+    parser = ArgumentParser(description=__doc__)
+    parser.add_argument("--only", choices=("patterns", "cases"))
+    args = parser.parse_args()
+    if args.only != "cases":
+        subprocess.run(
+            ["lake", "build", "Erdos272.KernelSupports"], cwd=root, check=True
+        )
+        output = subprocess.check_output(
+            ["lake", "env", "lean", "--run", "certificates/PrintSupports.lean"],
+            cwd=root,
+            text=True,
+        )
+        supports: list[list[int]] = json.loads(output)
+        support_search = Search(library, 4, SUPPORT_BOUND)
+        write_forest(
+            source,
+            "Patterns",
+            4,
+            SUPPORT_BOUND,
+            [(f"(seeded {s})", support_search.support_tree(s)) for s in supports],
+        )
+        write_module(
+            source / "Erdos272Bounds/Rank.lean",
+            "E272.Search",
+            ["Erdos272.SupportRank", "Erdos272Bounds.Patterns"],
+            [
+                f"theorem rankAbove{SUPPORT_BOUND} : RankBound {SUPPORT_BOUND} 0 := by\n"
+                "  intro F hf hn hlarge\n"
+                "  rcases Neutral.rank_or_kernel_support F hf hn with hr | ⟨s, hs, hm⟩\n"
+                "  · simpa using hr\n"
+                f"  · exact False.elim ((not_le_of_gt hlarge) (Run{SUPPORT_BOUND}.Patterns.bounded s hs F hf hn (seeded_covers hf hm) (by simp)))"
+            ],
+        )
+    if args.only != "patterns":
+        write_forest(
+            source, "Cases", 0, BOUND, [("board", Search(library, 0, BOUND).tree())]
+        )
     write_module(
         source / "Erdos272Bounds.lean",
         f"E272.Search.Run{BOUND}",
         [
-            "Erdos272Bounds.Patterns",
+            "Erdos272Bounds.Rank",
             "Erdos272Bounds.Cases",
-            "Erdos272.SupportRank",
             "Erdos272",
         ],
         [
-            f"theorem rankAbove{BOUND} : RankBound {BOUND} 0 := by\n"
-            "  intro F hf hn hlarge\n"
-            "  rcases Neutral.rank_or_kernel_support F hf hn with hr | ⟨s, hs, hm⟩\n"
-            "  · simpa using hr\n"
-            "  · exact False.elim ((not_le_of_gt hlarge) (Patterns.bounded s hs F hf hn (seeded_covers hf hm) (by simp)))",
             f"theorem upper{BOUND} (F : Finset Mask) (hf : Valid F) : F.card ≤ {BOUND} := by\n"
             "  by_cases h : 96 ≤ F.card\n"
-            f"  · exact Cases.bounded rankAbove{BOUND} F hf (nonstar_of_large hf h) (fun a _ => board_bit a) (by simp)\n"
+            f"  · exact Cases.bounded (fun G hg hn hG => rankAbove{SUPPORT_BOUND} G hg hn (by omega)) F hf (nonstar_of_large hf h) (fun a _ => board_bit a) (by simp)\n"
             "  · omega",
             f"#print axioms upper{BOUND}",
         ],

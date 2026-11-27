@@ -3,15 +3,12 @@
 import ctypes as ct
 from dataclasses import dataclass
 from functools import lru_cache
-from itertools import combinations
 from pathlib import Path
 from typing import Iterator
 
 import numpy as np
 
 from audit import N, LIMIT, is_ap
-
-BOUND = 99
 
 
 def indices(bits: int) -> Iterator[int]:
@@ -41,7 +38,8 @@ RANK = Cut("rank")
 
 
 class Search:
-    def __init__(self, library: Path, cap: int):
+    def __init__(self, library: Path, cap: int, bound: int):
+        self.bound = bound
         self.cap = cap
         self.coloring = ct.CDLL(str(library)).color_api
         self.coloring.argtypes = [
@@ -82,7 +80,7 @@ class Search:
             92
             + sum(bool(pool & s) for s in self.sup)
             + min(self.cap, (pool & self.zero_bits).bit_count())
-            <= BOUND
+            <= self.bound
             or any(not (pool & self.sup[j]) for j in indices(required))
             or any(not (pool & omit) for omit in self.omit)
         )
@@ -90,7 +88,7 @@ class Search:
     def paint(
         self, free: int, selected: tuple[int, ...]
     ) -> tuple[list[int], Cut] | None:
-        k = BOUND - len(selected)
+        k = self.bound - len(selected)
         colors: dict[int, int] = {}
         bad: list[int] = []
         remaining = free
@@ -121,35 +119,12 @@ class Search:
                 return None
             colors = {int(v): int(c) for v, c in zip(vertices, out)}
             if found < 0:
-                # Cover the monochromatic edges. If every chosen endpoint is
-                # absent, the remaining colors already certify that branch.
-                groups: list[list[int]] = [[] for _ in range(k)]
-                for v, c in colors.items():
-                    groups[c].append(v)
-                conflicts: dict[int, set[int]] = {}
-                for group in groups:
-                    for v, w in combinations(group, 2):
-                        if self.ap[v & w]:
-                            conflicts.setdefault(v, set()).add(w)
-                            conflicts.setdefault(w, set()).add(v)
-                while conflicts:
-                    v = max(
-                        conflicts,
-                        key=lambda a: (
-                            len(conflicts[a]),
-                            -(free & self.neighbors(a)).bit_count(),
-                            a,
-                        ),
-                    )
-                    bad.append(v)
+                bad = [v for v, c in colors.items() if c == 255]
+                for v in bad:
                     del colors[v]
-                    for w in conflicts.pop(v):
-                        conflicts[w].remove(v)
-                        if not conflicts[w]:
-                            del conflicts[w]
         for j, v in enumerate(selected, k):
             colors[v] = j
-        classes: list[list[int]] = [[] for _ in range(BOUND)]
+        classes: list[list[int]] = [[] for _ in range(self.bound)]
         for v in sorted(colors):
             classes[colors[v]].append(v)
         digits = [d for group in classes for d in [len(group), *group]]
@@ -176,7 +151,7 @@ class Search:
         demands = [(pool & self.sup[j], 1) for j in indices(missing)]
         demands += [(pool & self.omit[i], 1) for i in indices(common)]
         zneed = (
-            BOUND
+            self.bound
             + 1
             - 92
             - sum(bool(pool & s) for s in self.sup)

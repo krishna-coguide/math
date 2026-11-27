@@ -94,7 +94,7 @@ These are actual members, not merely APs contained in members. To obtain the lis
 
 Two separate case checks then give the bound:
 
-1. **Families containing a listed configuration.** Start with all subsets compatible with every required member. For each of the 59 lists, the `Patterns` proof bounds such a nonstar family by 99. At this stage it uses only the previously proved bound $92+h+\min(4,z)$, not the stronger estimate $92+h$.
+1. **Families containing a listed configuration.** Start with all subsets compatible with every required member. For each of the 59 lists, the `Patterns` proof bounds such a nonstar family by **95**. Therefore every nonstar of size above 95 satisfies the stronger bound $|F|\leq92+h$ (`E272.Search.rankAbove95`). At this stage it uses only the previously proved bound $92+h+\min(4,z)$, not the stronger estimate $92+h$.
 2. **All other families.** Suppose $|F|\geq100$. The common-point theorem rules out a shared point, and the first check rules out every listed configuration. The alternative therefore gives $100\leq92+h$, so **at least eight of the 14 possible 7- or 11-term APs** must be contained in members. The `Cases` proof checks all possibilities and again gives $|F|\leq99$, a contradiction.
 
 Both checks use the following exhaustive splits. For a 7- or 11-term progression $T$, either a member contains it or none does. In the first case every member meets $T$ in an AP or the empty set; in the second case all supersets of $T$ can be removed. Splitting on whether a particular set $A$ is a member is also valid. If it is, every other member must intersect it in a nonempty AP. At a coloring leaf the candidate sets have at most 99 colors, with **no two distinct sets of the same color** having a nonempty AP intersection. Rank estimates or impossible membership requirements close the other leaves.
@@ -132,7 +132,7 @@ lake build Erdos272.NeutralBound Erdos272.FourSharp Erdos272.ActiveWindows
 lake env lean CheckRefinement.lean
 ```
 
-[`generate_bound.py`](generate_bound.py) uses the project Python and a C++20 compiler to propose certificates, then writes the Lean source under the ignored `.lake/proof-src/`. No generated build artifacts need to be committed. The generator is not a verifier: an invalid coloring or an uncovered branch fails the Lean build. The two case checks use four parallel batches each. The generator reads the 59 support lists from the compiled Lean definition; changing a listed mask cannot silently change the theorem.
+[`generate_bound.py`](generate_bound.py) uses the project Python and a C++20 compiler to propose certificates, then writes the Lean source under the ignored `.lake/proof-src/`. No generated build artifacts need to be committed. The generator is not a verifier: an invalid coloring or an uncovered branch fails the Lean build. The two case checks use parallel batches. The generator reads the 59 support lists from the compiled Lean definition; changing a listed mask cannot silently change the theorem.
 
 [`Check.lean`](Check.lean) and [`CheckBound.lean`](CheckBound.lean) print the axioms of the results. The only ones used are standard `propext`, `Classical.choice`, and `Quot.sound` (some results use fewer).
 [`audit.py`](audit.py) is an independent exact-integer check of the counts. `--palettes` prints the rooted cover data.
