@@ -1,4 +1,4 @@
-"""Generate independently checkable Lean modules for the 103 upper bound.
+"""Generate independently checkable Lean modules for the unrestricted upper bound.
 
 Run from any directory with the repository's Nix-shell Python, then run
 `lake build Erdos272Bounds` from the project directory. No network or solver

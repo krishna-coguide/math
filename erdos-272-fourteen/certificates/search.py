@@ -3,6 +3,7 @@
 import ctypes as ct
 from dataclasses import dataclass
 from functools import lru_cache
+from itertools import combinations
 from pathlib import Path
 from typing import Iterator
 
@@ -10,7 +11,7 @@ import numpy as np
 
 from audit import N, LIMIT, is_ap
 
-BOUND = 103
+BOUND = 101
 
 
 def indices(bits: int) -> Iterator[int]:
@@ -79,15 +80,18 @@ class Search:
         return (
             92
             + sum(bool(pool & s) for s in self.sup)
-            + (pool & self.zero_bits).bit_count()
+            + min(4, (pool & self.zero_bits).bit_count())
             <= BOUND
             or any(not (pool & self.sup[j]) for j in indices(required))
             or any(not (pool & omit) for omit in self.omit)
         )
 
-    def paint(self, free: int, selected: tuple[int, ...]) -> Cut | None:
+    def paint(
+        self, free: int, selected: tuple[int, ...]
+    ) -> tuple[list[int], Cut] | None:
         k = BOUND - len(selected)
         colors: dict[int, int] = {}
+        bad: list[int] = []
         remaining = free
         for color in range(k):
             available = remaining
@@ -108,13 +112,40 @@ class Search:
                 vertices.ctypes.data_as(ct.POINTER(ct.c_int32)),
                 len(vertices),
                 k,
-                1000 if len(vertices) < 800 else 400,
+                1500 if len(vertices) < 800 else 600,
                 0,
                 out.ctypes.data_as(ct.POINTER(ct.c_uint8)),
             )
             if not found:
                 return None
             colors = {int(v): int(c) for v, c in zip(vertices, out)}
+            if found < 0:
+                # Cover the monochromatic edges. If every chosen endpoint is
+                # absent, the remaining colors already certify that branch.
+                groups: list[list[int]] = [[] for _ in range(k)]
+                for v, c in colors.items():
+                    groups[c].append(v)
+                conflicts: dict[int, set[int]] = {}
+                for group in groups:
+                    for v, w in combinations(group, 2):
+                        if self.ap[v & w]:
+                            conflicts.setdefault(v, set()).add(w)
+                            conflicts.setdefault(w, set()).add(v)
+                while conflicts:
+                    v = max(
+                        conflicts,
+                        key=lambda a: (
+                            len(conflicts[a]),
+                            -(free & self.neighbors(a)).bit_count(),
+                            a,
+                        ),
+                    )
+                    bad.append(v)
+                    del colors[v]
+                    for w in conflicts.pop(v):
+                        conflicts[w].remove(v)
+                        if not conflicts[w]:
+                            del conflicts[w]
         for j, v in enumerate(selected, k):
             colors[v] = j
         classes: list[list[int]] = [[] for _ in range(BOUND)]
@@ -124,7 +155,7 @@ class Search:
         encoded = 0
         for d in reversed(digits):
             encoded = (encoded << N) | d
-        return Cut("paint", len(colors), encoded)
+        return bad, Cut("paint", len(colors), encoded)
 
     def refine(self, pool: int, required: int, selected: tuple[int, ...]) -> Cut:
         if self.auto(pool, required):
@@ -136,9 +167,9 @@ class Search:
             missing &= ~self.active[a]
             common &= a
             free &= ~(1 << a)
-        leaf = self.paint(free, selected)
-        if leaf is not None:
-            return leaf
+        painted = self.paint(free, selected)
+        if painted is not None and not painted[0]:
+            return painted[1]
         # A large family must meet every active-token witness pool and miss every
         # common point. Its rank cost also requires enough actual zero-weight APs.
         demands = [(pool & self.sup[j], 1) for j in indices(missing)]
@@ -152,34 +183,32 @@ class Search:
         )
         if zneed > 0:
             demands.append((free & self.zero_bits, zneed))
+        choices: list[int] = []
+        rest = RANK
         if demands:
             group, need = min(demands, key=lambda g: g[0].bit_count() - g[1])
-            choices = sorted(
-                indices(group),
-                key=lambda v: ((pool & self.neighbors(v)).bit_count(), v),
-            )
-            choices = choices[: len(choices) - need + 1]
-            if len(choices) <= 50:
-                yes_cases: list[tuple[int, Cut]] = []
-                for v in choices:
-                    one = 1 << v
-                    yes_cases.append(
-                        (
-                            v,
-                            self.refine(
-                                (pool & self.neighbors(v)) | one,
-                                required,
-                                selected + (v,),
-                            ),
-                        )
-                    )
-                    pool &= ~one
-                if not self.auto(pool, required):
-                    raise RuntimeError("uncovered branch")
-                node = RANK
-                for v, yes in reversed(yes_cases):
-                    node = split("mem", v, yes, node)
-                return node
+            size = group.bit_count() - need + 1
+            if size <= 50:
+                choices = sorted(
+                    indices(group),
+                    key=lambda v: ((pool & self.neighbors(v)).bit_count(), v),
+                )[:size]
+        if painted is not None and (not choices or len(painted[0]) < len(choices)):
+            choices, rest = painted
+        if choices:
+            yes_cases: list[tuple[int, Cut]] = []
+            for v in choices:
+                one = 1 << v
+                yes = self.refine(
+                    (pool & self.neighbors(v)) | one, required, selected + (v,)
+                )
+                yes_cases.append((v, yes))
+                pool &= ~one
+            if rest is RANK and not self.auto(pool, required):
+                raise RuntimeError("uncovered branch")
+            for v, yes in reversed(yes_cases):
+                rest = split("mem", v, yes, rest)
+            return rest
         v = min(indices(free), key=lambda a: (pool & self.neighbors(a)).bit_count())
         one = 1 << v
         return split(
