@@ -123,7 +123,81 @@ extern "C" int color_api(const int *vs, int n, int K, int iters, int seed,
     copy(col.begin(), col.end(), out);
     return K;
   }
-  // A near-coloring gives a colorable branch after dropping conflict endpoints.
-  copy(best_colors.begin(), best_colors.end(), out);
-  return -best;
+  // Start from a proper partial coloring by expelling one endpoint of
+  // each remaining monochromatic edge. Prefer to branch on low-degree
+  // vertices: their yes-branches have fewer possible members.
+  col = best_colors;
+  vector<int> weight(n), drop(n);
+  for (int v = 0; v < n; ++v)
+    weight[v] = 1 + (1 << (16 * int(adj[v].size()) / n));
+  for (int v = 0; v < n; ++v)
+    for (int u : adj[v])
+      if (v < u && col[v] == col[u] && !drop[v] && !drop[u])
+        drop[adj[v].size() < adj[u].size() ? v : u] = 1;
+
+  // hits[v,c] now counts the total weight of v's neighbors colored c.
+  // Insert an uncolored vertex v into c, expelling all such neighbors.
+  fill(hits.begin(), hits.end(), 0);
+  fill(tab.begin(), tab.end(), 0);
+  int left = 0;
+  for (int v = 0; v < n; ++v) {
+    if (drop[v]) {
+      col[v] = -1;
+      left += weight[v];
+    } else {
+      for (int u : adj[v])
+        hits[u * K + col[v]] += weight[v];
+    }
+  }
+  int best_left = left;
+  best_colors = col;
+  for (int t = 1; t <= 3 * iters && left; ++t) {
+    int v = -1, c = 0, delta = 100000000, ties = 0, uncolored = 0;
+    for (int i = 0; i < n; ++i) {
+      if (col[i] >= 0)
+        continue;
+      ++uncolored;
+      for (int j = 0; j < K; ++j) {
+        const int change = hits[i * K + j] - weight[i];
+        if (change > delta ||
+            (tab[i * K + j] >= t && left + change >= best_left))
+          continue;
+        if (change < delta) {
+          delta = change;
+          ties = 0;
+        }
+        if (++ties == 1 || rng() % ties == 0) {
+          v = i;
+          c = j;
+        }
+      }
+    }
+    if (v < 0)
+      break;
+    col[v] = c;
+    const int until = t + 3 + rng() % 8 + uncolored / 2;
+    for (int u : adj[v]) {
+      hits[u * K + c] += weight[v];
+      if (col[u] == c) {
+        col[u] = -1;
+        tab[u * K + c] = until;
+        for (int w : adj[u])
+          hits[w * K + c] -= weight[u];
+      }
+    }
+    left += delta;
+    if (left < best_left) {
+      best_left = left;
+      best_colors = col;
+    }
+  }
+  int uncolored = 0;
+  for (int i = 0; i < n; ++i) {
+    if (best_colors[i] < 0) {
+      out[i] = 255;
+      ++uncolored;
+    } else
+      out[i] = static_cast<unsigned char>(best_colors[i]);
+  }
+  return uncolored ? -uncolored : K;
 }
