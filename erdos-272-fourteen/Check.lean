@@ -13,3 +13,6 @@ import Erdos272
 #print axioms E272.four_long
 #print axioms E272.unavoidable_after_three
 #print axioms E272.special_or_four_intersections
+#print axioms E272.mobius_cost_bound
+#print axioms E272.no_anchor_bound
+#print axioms E272.rank_upper_119

@@ -9,3 +9,7 @@ name = "Erdos272"
 name = "mathlib"
 scope = "leanprover-community"
 rev = "v4.36.0"
+
+[[lean_lib]]
+name = "Erdos272Bounds"
+srcDir = ".lake/proof-src"

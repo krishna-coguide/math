@@ -4,6 +4,7 @@ import Erdos272.Rank
 import Erdos272.RankLocal
 import Erdos272.Stars
 import Erdos272.Catalog
+import Erdos272.FullRank
 import Mathlib.Tactic.Tauto
 
 namespace E272
@@ -88,5 +89,16 @@ theorem special_or_four_intersections {F : Finset Mask} (hf : Valid F) (hn : 96 
           mem_longAPs.mpr ⟨hf a ha b hb hab,hsh⟩, a,ha,b,hb,hab,rfl⟩
         simpa [he] using hsub hi)
   omega
+
+/-- A numerical bound for arbitrary valid families, with no common-point assumption.
+Sharper bounds follow when few long progressions are represented. -/
+theorem rank_upper_119 {F : Finset Mask} (hf : Valid F) : F.card ≤ 119 := by
+  by_cases h : 96 ≤ F.card
+  · have hc := mobius_cost_bound F hf (nonstar_of_large hf h)
+    have ha : (activeLong F).length ≤ 14 := List.length_filter_le ..
+    have hz : (F ∩ zeroLong.toFinset).card ≤ 13 :=
+      (Finset.card_le_card Finset.inter_subset_right).trans (by decide +kernel)
+    omega
+  · omega
 
 end E272
