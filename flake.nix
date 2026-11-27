@@ -103,10 +103,17 @@
               # lean4 is deliberately absent. `lean`, `lake` are elan proxies.
               elan
 
-              # Markdown: lint, convert, and PDF via Typst (no TeX install).
+              # Markdown: lint, convert, and PDF via Typst or LaTeX.
               markdownlint-cli2
               pandoc
               typst
+
+              # LaTeX: the whole TeX Live (LuaLaTeX, XeLaTeX, pdfLaTeX, latexmk,
+              # biber/biblatex, chktex, latexindent, every CTAN package), so an
+              # agent never needs to install a package. tex-fmt formats .tex.
+              texliveFull
+              tex-fmt
+              texlab # LaTeX language server
 
               # Prime Agent (see `prime` above).
               toolsUpdate
