@@ -1,6 +1,6 @@
 # Erdős #272 on fourteen points
 
-**Lean-checked result: the unrestricted maximum is between 95 and 101, inclusive.**
+**Lean-checked result: the unrestricted maximum is between 95 and 99, inclusive.**
 A family is a collection of distinct subsets of $[14]=\{1,\ldots,14\}$.
 It is *valid* if the intersection of every two different members is exactly a nonempty arithmetic progression (AP).
 A singleton or a pair counts as an AP. The members need not be APs.
@@ -80,46 +80,36 @@ The resulting score is zero on every AP, not only the short ones, and positive o
 Remove only the $z$ actual members before applying the rank argument. Inactive positive coordinates can then be dropped.
 This is an upper bound, not an exclusion of 96.
 
-## How the bound drops to 101
+## Why 100 members are impossible
 
-**Theorem (formalized).** For every valid family $F$ of distinct subsets of $[14]$, $|F|\leq 101$.
-The declaration is `E272.Search.Run101.upper101` in the `Erdos272Bounds` build target.
+**Theorem (formalized).** Every valid family $F$ on $[14]$ has $|F|\leq 99$ (`E272.Search.Run99.upper99`).
 There is no hypothesis on the members, their sizes, or their common intersection.
 
-Suppose instead that $F$ has at least 102 members. The common-point case is already impossible. The four-column refinement below gives $h+\min(4,z)\geq10$, so at least six of the 14 possible positive-coordinate progressions must occur.
-The proof splits according to which of the 14 possible positive-coordinate progressions are contained in a member.
-These decisions constrain *every* member. For example, if $T\subseteq A\in F$ is a progression, every $B\in F$ meets $T$ in a progression or in the empty set: for $B\ne A$, intersect the AP $A\cap B$ with $T$.
-If $T$ is not contained in any member, all its supersets can be removed instead.
+The key step is to identify when the 92 pair-and-constant coordinates together with the $h$ active long coordinates might not suffice. [SupportRank](Erdos272/SupportRank.lean) proves this alternative for any valid family with no common point:
 
-In a remaining case the proof can split on the presence of a particular set $A$.
-If present, all other candidates must intersect it in a nonempty AP. If absent, $A$ is removed.
-Some branches contradict a required containment or the rank bound directly.
-For the others, the certificate colors the remaining candidates with at most 101 colors so that **no two distinct subsets of the same color have a nonempty AP as their intersection**.
-A valid family can take at most one set from each color.
-If a proposed coloring fails, select sets meeting every conflicting same-color pair and split on their membership. When all those sets are absent, the remaining coloring works; each presence branch is checked separately.
-[Search](Erdos272/Search.lean) proves the case splits are exhaustive, [ColorProof](Erdos272/ColorProof.lean) checks the classes and their coverage, and [Certificate](Erdos272/Certificate.lean) joins these proofs.
-The certificate starts with every subset available and no required progression. It does not assume a successful search, an absent singleton, or a chosen anchor.
+- $|F|\leq 92+h$; or
+- $F$ contains **every set** in at least one of [59 explicit lists of APs](Erdos272/KernelSupports.lean).
 
-### The four-column refinement
+These are actual members, not merely APs contained in members. To obtain the lists, suppose the incidence vectors are linearly dependent over the rationals. The Gram matrix identity forces the dependence to be supported on AP members. Using the 31 inverse incidence rows and scaling to integers not all even produces a nonzero parity pattern. Since the nonstar family cannot contain a singleton, [SupportParam](Erdos272/SupportParam.lean) describes the pattern using just 21 bits. [SupportCover](Erdos272/SupportCover.lean) checks all nonzero patterns. Each forces two disjoint APs, an obstruction to the absence of a common point, or one of the 59 lists.
 
-A separate algebraic argument sharpens the rank estimate for a family with no common point to
+Two separate case checks then give the bound:
 
-$$
-|F|\leq 92+h+\min(4,z).
-$$
+1. **Families containing a listed configuration.** Start with all subsets compatible with every required member. For each of the 59 lists, the `Patterns` proof bounds such a nonstar family by 99. At this stage it uses only the previously proved bound $92+h+\min(4,z)$, not the stronger estimate $92+h$.
+2. **All other families.** Suppose $|F|\geq100$. The common-point theorem rules out a shared point, and the first check rules out every listed configuration. The alternative therefore gives $100\leq92+h$, so **at least eight of the 14 possible 7- or 11-term APs** must be contained in members. The `Cases` proof checks all possibilities and again gives $|F|\leq99$, a contradiction.
 
-Here $h$ and $z$ are the same counts as above. Since $h\leq14$, this gives 110 even without the coloring certificates. [NeutralBound](Erdos272/NeutralBound.lean) proves this by adding four linear checks on the zero-weight APs.
-A nonzero rational dependence would give a nonzero parity pattern; [NeutralCover](Erdos272/NeutralCover.lean) verifies that every such pattern forces incompatible members or a common point.
-[FourSharp](Erdos272/FourSharp.lean) gives a valid 30-member example with four independent dependencies in the uncorrected feature matrix.
-This is sharpness of the **four-column rank correction**, not sharpness of 101 for the original question.
-[ActiveWindows](Erdos272/ActiveWindows.lean) also improves the restricted bound of 102 above to 101 under the same exclusions.
-The 101 certificate uses the four-column bound; neither the sharpness example nor the restricted 101 theorem is needed.
+Both checks use the following exhaustive splits. For a 7- or 11-term progression $T$, either a member contains it or none does. In the first case every member meets $T$ in an AP or the empty set; in the second case all supersets of $T$ can be removed. Splitting on whether a particular set $A$ is a member is also valid. If it is, every other member must intersect it in a nonempty AP. At a coloring leaf the candidate sets have at most 99 colors, with **no two distinct sets of the same color** having a nonempty AP intersection. Rank estimates or impossible membership requirements close the other leaves.
+
+[Search](Erdos272/Search.lean) proves the splits and rank deductions. [ColorProof](Erdos272/ColorProof.lean) checks the colors and coverage. [Certificate](Erdos272/Certificate.lean) joins the cases. The unrestricted search starts with every subset available and no required progression. The four-column bound and the 59-configuration alternative keep the two parts of the proof independent of the desired conclusion.
+
+### The four-column bound
+
+[NeutralBound](Erdos272/NeutralBound.lean) gives $|F|\leq 92+h+\min(4,z)$ for a valid family with no common point. It uses four extra linear checks on the zero-weight APs. Since $h\leq14$, this already gives 110 without coloring certificates. [FourSharp](Erdos272/FourSharp.lean) gives a valid 30-member example with four independent dependencies in the uncorrected feature matrix. This is sharpness of the **four-column rank correction**, not of the family-size bound. [ActiveWindows](Erdos272/ActiveWindows.lean) also improves the restricted 102 bound above to 101 under the same exclusions.
 
 ## What remains
 
-No 96-member family was found, and none of the theorems excludes **all** such families.
-The next proof can split on a member of the 54-set list or exploit four specified long *intersections*, rather than searching every family without restrictions.
-To settle the question one must either exhibit 96 sets or lower the upper bound from 101 to 95. A failed or interrupted search is not an upper bound.
+The remaining possibilities for $t(14)$ are **95, 96, 97, 98, and 99**. No 96-member family was found.
+For a smaller target, both parts matter: one must either tighten the bounds for the 59 listed configurations or avoid assuming them away, and handle families with fewer active progressions.
+To settle the question one must either exhibit 96 sets or lower the upper bound from 99 to 95. A failed or interrupted search is not an upper bound.
 No claim of priority is made.
 
 ## Reproduce
@@ -142,7 +132,7 @@ lake build Erdos272.NeutralBound Erdos272.FourSharp Erdos272.ActiveWindows
 lake env lean CheckRefinement.lean
 ```
 
-[`generate_bound.py`](generate_bound.py) uses the project Python and a C++20 compiler to propose certificates, then writes the Lean source under the ignored `.lake/proof-src/`. No generated build artifacts need to be committed. The generator is not a verifier: an invalid coloring or an uncovered branch fails the Lean build. The proof is split over eight modules to allow parallel checking.
+[`generate_bound.py`](generate_bound.py) uses the project Python and a C++20 compiler to propose certificates, then writes the Lean source under the ignored `.lake/proof-src/`. No generated build artifacts need to be committed. The generator is not a verifier: an invalid coloring or an uncovered branch fails the Lean build. The two case checks use four parallel batches each. The generator reads the 59 support lists from the compiled Lean definition; changing a listed mask cannot silently change the theorem.
 
 [`Check.lean`](Check.lean) and [`CheckBound.lean`](CheckBound.lean) print the axioms of the results. The only ones used are standard `propext`, `Classical.choice`, and `Quot.sound` (some results use fewer).
 [`audit.py`](audit.py) is an independent exact-integer check of the counts. `--palettes` prints the rooted cover data.
