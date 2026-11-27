@@ -1,12 +1,14 @@
 # Erdős #272 on fourteen points
 
-**Lean-checked result: the unrestricted maximum is between 95 and 99, inclusive.**
+**Lean-checked result: $t(14)=95$.**
 A family is a collection of distinct subsets of $[14]=\{1,\ldots,14\}$.
 It is *valid* if the intersection of every two different members is exactly a nonempty arithmetic progression (AP).
 A singleton or a pair counts as an AP. The members need not be APs.
-Szabó's construction gives 95 members. The question is whether 96 are possible.
+Szabó's construction gives 95 members. The unrestricted upper bound below rules out 96.
 
-## What is proved
+[`E272.Board.t14_eq_95`](Erdos272/Answer.lean) states the exact value. The theorem uses families of ordinary finite subsets of $\{1,\ldots,14\}$. In [Board](Erdos272/Board.lean), a progression is $\{a+jd:0\leq j\leq n\}$ for some $d>0$ and $n\geq0$. The same module proves that this definition agrees with the 14-bit test and that encoding a family preserves cardinality and intersection. [`E272.Board.greatest14`](Erdos272/Answer.lean) states both attainment and the upper bound without taking a supremum.
+
+## Additional structural results
 
 Call a progression *long* if it has at least seven terms. Call a set *short* if it contains no seven-term AP.
 The distinction between a set **containing** a progression and two sets **intersecting exactly in** that progression matters.
@@ -80,9 +82,9 @@ The resulting score is zero on every AP, not only the short ones, and positive o
 Remove only the $z$ actual members before applying the rank argument. Inactive positive coordinates can then be dropped.
 This is an upper bound, not an exclusion of 96.
 
-## Why 100 members are impossible
+## Why 96 members are impossible
 
-**Theorem (formalized).** Every valid family $F$ on $[14]$ has $|F|\leq 99$ (`E272.Search.Run99.upper99`).
+**Theorem (formalized).** Every valid family $F$ on $[14]$ has $|F|\leq 95$ (`E272.Search.Run95.upper95`).
 There is no hypothesis on the members, their sizes, or their common intersection.
 
 The key step is to identify when the 92 pair-and-constant coordinates together with the $h$ active long coordinates might not suffice. [SupportRank](Erdos272/SupportRank.lean) proves this alternative for any valid family with no common point:
@@ -95,9 +97,11 @@ These are actual members, not merely APs contained in members. To obtain the lis
 Two separate case checks then give the bound:
 
 1. **Families containing a listed configuration.** Start with all subsets compatible with every required member. For each of the 59 lists, the `Patterns` proof bounds such a nonstar family by **95**. Therefore every nonstar of size above 95 satisfies the stronger bound $|F|\leq92+h$ (`E272.Search.rankAbove95`). At this stage it uses only the previously proved bound $92+h+\min(4,z)$, not the stronger estimate $92+h$.
-2. **All other families.** Suppose $|F|\geq100$. The common-point theorem rules out a shared point, and the first check rules out every listed configuration. The alternative therefore gives $100\leq92+h$, so **at least eight of the 14 possible 7- or 11-term APs** must be contained in members. The `Cases` proof checks all possibilities and again gives $|F|\leq99$, a contradiction.
+2. **All other families.** Suppose $|F|\geq96$. The common-point theorem rules out a shared point, and the first check rules out every listed configuration. The alternative therefore gives $96\leq92+h$: at least four of the 14 possible 7- or 11-term APs are contained in members. The `Cases` proof checks every possibility and obtains $|F|\leq95$, a contradiction.
 
-Both checks use the following exhaustive splits. For a 7- or 11-term progression $T$, either a member contains it or none does. In the first case every member meets $T$ in an AP or the empty set; in the second case all supersets of $T$ can be removed. Splitting on whether a particular set $A$ is a member is also valid. If it is, every other member must intersect it in a nonempty AP. At a coloring leaf the candidate sets have at most 99 colors, with **no two distinct sets of the same color** having a nonempty AP intersection. Rank estimates or impossible membership requirements close the other leaves.
+The decisive change to the search was to split on the *least pair or triple that is a member* before deciding which long APs occur. Order the 91 pairs first, then the 364 triples, each by mask value. There is one branch for each possible first member, and a last branch for a family with no pair or triple. Choosing one such member immediately rules out all subsets incompatible with it. This avoids repeating the same small-member split in many different long-AP cases. The root still checks the empty set and singleton cases; no member is assumed present or absent.
+
+Both checks use the following exhaustive splits. For a 7- or 11-term progression $T$, either a member contains it or none does. In the first case every member meets $T$ in an AP or the empty set; in the second case all supersets of $T$ can be removed. Splitting on whether a particular set $A$ is a member is also valid. If it is, every other member must intersect it in a nonempty AP. At a coloring leaf the candidate sets have at most 95 colors, with **no two distinct sets of the same color** having a nonempty AP intersection. Rank estimates or impossible membership requirements close the other leaves.
 
 [Search](Erdos272/Search.lean) proves the splits and rank deductions. [ColorProof](Erdos272/ColorProof.lean) checks the colors and coverage. [Certificate](Erdos272/Certificate.lean) joins the cases. The unrestricted search starts with every subset available and no required progression. The four-column bound and the 59-configuration alternative keep the two parts of the proof independent of the desired conclusion.
 
@@ -105,12 +109,9 @@ Both checks use the following exhaustive splits. For a 7- or 11-term progression
 
 [NeutralBound](Erdos272/NeutralBound.lean) gives $|F|\leq 92+h+\min(4,z)$ for a valid family with no common point. It uses four extra linear checks on the zero-weight APs. Since $h\leq14$, this already gives 110 without coloring certificates. [FourSharp](Erdos272/FourSharp.lean) gives a valid 30-member example with four independent dependencies in the uncorrected feature matrix. This is sharpness of the **four-column rank correction**, not of the family-size bound. [ActiveWindows](Erdos272/ActiveWindows.lean) also improves the restricted 102 bound above to 101 under the same exclusions.
 
-## What remains
+## Scope
 
-The remaining possibilities for $t(14)$ are **95, 96, 97, 98, and 99**. No 96-member family was found.
-For a smaller target, both parts matter: one must either tighten the bounds for the 59 listed configurations or avoid assuming them away, and handle families with fewer active progressions.
-To settle the question one must either exhibit 96 sets or lower the upper bound from 99 to 95. A failed or interrupted search is not an upper bound.
-No claim of priority is made.
+This determines the maximum at **fourteen points** and confirms Szabó's construction is optimal there. It does not prove a formula for every board size, nor that every extremal family has a common element. No claim of priority is made.
 
 ## Reproduce
 
@@ -124,7 +125,7 @@ python audit.py
 
 # Generate and kernel-check the separate, larger proof.
 python generate_bound.py
-lake build Erdos272Bounds
+lake build +Erdos272.Answer
 lake env lean CheckBound.lean
 
 # Optional: audit the four-column refinement and its sharpness example.
@@ -132,7 +133,7 @@ lake build Erdos272.NeutralBound Erdos272.FourSharp Erdos272.ActiveWindows
 lake env lean CheckRefinement.lean
 ```
 
-[`generate_bound.py`](generate_bound.py) uses the project Python and a C++20 compiler to propose certificates, then writes the Lean source under the ignored `.lake/proof-src/`. No generated build artifacts need to be committed. The generator is not a verifier: an invalid coloring or an uncovered branch fails the Lean build. The two case checks use parallel batches. The generator reads the 59 support lists from the compiled Lean definition; changing a listed mask cannot silently change the theorem.
+[`generate_bound.py`](generate_bound.py) uses the project Python and a C++20 compiler to propose certificates, then writes the Lean source under the ignored `.lake/proof-src/`. No generated build artifacts need to be committed. The generator is not a verifier: an invalid coloring or an uncovered branch fails the Lean build. The default unrestricted check uses 32 parallel lanes; on a machine with less memory, generate with `python generate_bound.py --lanes 4` (or `--lanes 1`) instead. This changes only how the proof is split across modules. The checked `Cases` tree has 3,524 member splits, 17,945 token splits, 4,926 rank leaves, and 16,544 coloring leaves. All are joined back to the full board. An independent replay of that tree is a cross-check, not a replacement for the Lean build. The generator reads the 59 support lists from the compiled Lean definition; changing a listed mask cannot silently change the theorem.
 
 [`Check.lean`](Check.lean) and [`CheckBound.lean`](CheckBound.lean) print the axioms of the results. The only ones used are standard `propext`, `Classical.choice`, and `Quot.sound` (some results use fewer).
 [`audit.py`](audit.py) is an independent exact-integer check of the counts. `--palettes` prints the rooted cover data.

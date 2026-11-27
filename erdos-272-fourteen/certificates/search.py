@@ -226,16 +226,45 @@ class Search:
         return node
 
     def tree(self) -> Cut:
-        def visit(pool: int, req: int, i: int) -> Cut:
+        # First distinguish the least pair or triple, if any. Counts are
+        # computed on the full pool; the selected mask is not an assumption of Safe.
+        def visit(pool: int, req: int, selected: tuple[int, ...], untested: int) -> Cut:
             if self.auto(pool, req):
                 return RANK
-            if i == len(self.positive):
-                return self.refine(pool, req, ())
+            options = [j for j in indices(untested) if pool & self.sup[j]]
+            if not options:
+                return self.refine(pool, req, selected)
+            if pool.bit_count() <= 2400:
+                free = pool & ~sum(1 << a for a in selected)
+                painted = self.paint(free, selected)
+                if painted is not None:
+                    bad, leaf = painted
+                    if not bad:
+                        return leaf
+                    if len(bad) <= 2:
+                        return self.refine(pool, req, selected)
+            j = max(options, key=lambda i: (pool & ~self.trace[i]).bit_count())
+            later = untested ^ (1 << j)
             return split(
                 "tok",
-                self.positive[i],
-                visit(pool & self.trace[i], req | (1 << i), i + 1),
-                visit(pool & ~self.sup[i], req, i + 1),
+                self.positive[j],
+                visit(pool & self.trace[j], req | (1 << j), selected, later),
+                visit(pool & ~self.sup[j], req, selected, later),
             )
 
-        return self.exclude_trivial(visit(self.nontrivial, 0, 0))
+        all_tokens = (1 << len(self.positive)) - 1
+        small = sorted(
+            (a for a in range(LIMIT) if 2 <= a.bit_count() <= 3),
+            key=lambda a: (a.bit_count(), a),
+        )
+        pool = self.nontrivial
+        yes = []
+        for a in small:
+            yes.append(
+                (a, visit(pool & (self.neighbors(a) | (1 << a)), 0, (a,), all_tokens))
+            )
+            pool &= ~(1 << a)
+        node = visit(pool, 0, (), all_tokens)
+        for a, child in reversed(yes):
+            node = split("mem", a, child, node)
+        return self.exclude_trivial(node)
