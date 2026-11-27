@@ -1,6 +1,6 @@
 # Erdős #272 on fourteen points
 
-**Status: Lean-checked structural result; the unrestricted maximum is not determined here.**
+**Lean-checked result: the unrestricted maximum is between 95 and 103, inclusive.**
 A family is a collection of distinct subsets of $[14]=\{1,\ldots,14\}$.
 It is *valid* if the intersection of every two different members is exactly a nonempty arithmetic progression (AP).
 A singleton or a pair counts as an AP. The members need not be APs.
@@ -68,8 +68,7 @@ The precise hypotheses and the signed-weight argument are in [RankLocal](Erdos27
 
 ## A numerical upper bound
 
-For an arbitrary valid family, Lean now proves **$95\leq t(14)\leq119$**.
-More importantly, the number 119 can be reduced according to which long progressions occur.
+The algebraic proof alone bounds the unrestricted maximum by 119. It gives a more useful bound when we track which progressions occur.
 For a family with no common point, let $h$ count the distinct 7- or 11-term APs contained in some member, and let $z$ count the 9-, 10-, or 13-term APs that **are themselves members**.
 Then $|F|\leq 92+h+z$ (`E272.mobius_cost_bound`).
 There are only 14 possible progressions in the first count and 13 in the second.
@@ -81,11 +80,30 @@ The resulting score is zero on every AP, not only the short ones, and positive o
 Remove only the $z$ actual members before applying the rank argument. Inactive positive coordinates can then be dropped.
 This is an upper bound, not an exclusion of 96.
 
+## How the bound drops to 103
+
+**Theorem (formalized).** For every valid family $F$ of distinct subsets of $[14]$, $|F|\leq 103$.
+The declaration is `E272.Search.Run103.upper103` in the `Erdos272Bounds` build target.
+There is no hypothesis on the members, their sizes, or their common intersection.
+
+Suppose instead that $F$ has at least 104 members. The common-point case is already impossible, so the rank bound requires $h+z\geq12$.
+The proof splits according to which of the 14 possible positive-coordinate progressions are contained in a member.
+These decisions constrain *every* member. For example, if $T\subseteq A\in F$ is a progression, every $B\in F$ meets $T$ in a progression or in the empty set: for $B\ne A$, intersect the AP $A\cap B$ with $T$.
+If $T$ is not contained in any member, all its supersets can be removed instead.
+
+In a remaining case the proof can split on the presence of a particular set $A$.
+If present, all other candidates must intersect it in a nonempty AP. If absent, $A$ is removed.
+Some branches contradict a required containment or the rank bound directly.
+For the others, the certificate colors the remaining candidates with at most 103 colors so that **no two distinct subsets of the same color have a nonempty AP as their intersection**.
+A valid family can take at most one set from each color.
+[Search](Erdos272/Search.lean) proves the case splits are exhaustive, [ColorProof](Erdos272/ColorProof.lean) checks the classes and their coverage, and [Certificate](Erdos272/Certificate.lean) joins these proofs.
+The certificate starts with every subset available and no required progression. It does not assume a successful search, an absent singleton, or a chosen anchor.
+
 ## What remains
 
 No 96-member family was found, and none of the theorems excludes **all** such families.
 The next proof can split on a member of the 54-set list or exploit four specified long *intersections*, rather than searching every family without restrictions.
-An experimental clique search was stopped; no theorem depends on it or on Python output.
+To settle the question one must either exhibit 96 sets or lower the upper bound from 103 to 95. A failed or interrupted search is not an upper bound.
 No claim of priority is made.
 
 ## Reproduce
@@ -97,9 +115,16 @@ lake exe cache get
 lake build
 lake env lean Check.lean
 python audit.py
+
+# Generate and kernel-check the separate, larger proof.
+python generate_bound.py
+lake build Erdos272Bounds
+lake env lean CheckBound.lean
 ```
 
-[`Check.lean`](Check.lean) prints the axioms of the results. The only ones used are standard `propext`, `Classical.choice`, and `Quot.sound` (some results use fewer).
+[`generate_bound.py`](generate_bound.py) uses the project Python and a C++20 compiler to propose certificates, then writes the Lean source under the ignored `.lake/proof-src/`. No generated build artifacts need to be committed. The generator is not a verifier: an invalid coloring or an uncovered branch fails the Lean build. The proof is split over eight modules to allow parallel checking.
+
+[`Check.lean`](Check.lean) and [`CheckBound.lean`](CheckBound.lean) print the axioms of the results. The only ones used are standard `propext`, `Classical.choice`, and `Quot.sound` (some results use fewer).
 [`audit.py`](audit.py) is an independent exact-integer check of the counts. `--palettes` prints the rooted cover data.
 
 Sources: [Erdős problem #272](https://www.erdosproblems.com/272); [T. Szabó, *Intersection properties of subsets of integers*, §5](https://page.mi.fu-berlin.de/szabo/PDF/aps.pdf#page=21); [Z. Yang, *Exact values and exact upper bounds for families of integers with arithmetic progression intersections*, Theorems 1.1 and 1.4](https://arxiv.org/abs/2607.23004); Lyons's thirteen-point proof linked above.
