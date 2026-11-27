@@ -1,0 +1,15 @@
+import VeryWellCovered
+
+#print axioms VeryWellCovered.coreGraph_connected
+#print axioms VeryWellCovered.coreGraph_indepNum
+#print axioms VeryWellCovered.independentCount_cliqueFamily
+#print axioms VeryWellCovered.independentCount_graphJoin
+#print axioms VeryWellCovered.independentCount_core
+#print axioms VeryWellCovered.whisker_connected
+#print axioms VeryWellCovered.whisker_veryWellCovered
+#print axioms VeryWellCovered.independentCount_whisker
+#print axioms VeryWellCovered.leafyCount_valley
+#print axioms VeryWellCovered.leafyCount_not_isUnimodal
+#print axioms VeryWellCovered.independentCount_whisker_core
+#print axioms VeryWellCovered.whisker_core_valley
+#print axioms VeryWellCovered.counterexample
