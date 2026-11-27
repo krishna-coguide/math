@@ -1,0 +1,6 @@
+{
+  // Long display math and inline commands cannot wrap.
+  "config": { "MD013": false },
+  "globs": ["**/*.md"],
+  "ignores": [".lake/**", "**/.lake/**"]
+}

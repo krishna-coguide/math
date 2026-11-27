@@ -1,0 +1,19 @@
+.prime/**
+.pi/**
+.pi-subagents/**
+
+# Nix
+/result
+/result-*
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+.hypothesis/
+.ruff_cache/
+.ipynb_checkpoints/
+
+# Lean / Lake build output and fetched packages
+.lake/
