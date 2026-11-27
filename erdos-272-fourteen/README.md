@@ -66,6 +66,21 @@ The third weight may be negative, but on any superset of the third mask the tota
 The corrected rank argument bounds the family by $92+3=95$, a contradiction.
 The precise hypotheses and the signed-weight argument are in [RankLocal](Erdos272/RankLocal.lean), `E272.three_pattern_bound`.
 
+## A numerical upper bound
+
+For an arbitrary valid family, Lean now proves **$95\leq t(14)\leq119$**.
+More importantly, the number 119 can be reduced according to which long progressions occur.
+For a family with no common point, let $h$ count the distinct 7- or 11-term APs contained in some member, and let $z$ count the 9-, 10-, or 13-term APs that **are themselves members**.
+Then $|F|\leq 92+h+z$ (`E272.mobius_cost_bound`).
+There are only 14 possible progressions in the first count and 13 in the second.
+For example, if no member contains an 11-term progression and none is a 9-, 10-, or 13-term progression, the bound is 102.
+Families with a common point already have size at most 95.
+
+[FullRank](Erdos272/FullRank.lean) adds the 7- and 11-term indicators to the positive coordinates of the rank proof, and the 8-, 12-, and 14-term indicators to the negative coordinates.
+The resulting score is zero on every AP, not only the short ones, and positive on every non-AP.
+Remove only the $z$ actual members before applying the rank argument. Inactive positive coordinates can then be dropped.
+This is an upper bound, not an exclusion of 96.
+
 ## What remains
 
 No 96-member family was found, and none of the theorems excludes **all** such families.
