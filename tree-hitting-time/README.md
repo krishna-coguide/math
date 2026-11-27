@@ -3,7 +3,7 @@
 **Theorem (proved).** For every finite simple undirected tree $T$ of order $n\ge1$,
 
 $$
-\operatorname{HT}(T)\le \operatorname{HT}(P_n),
+\mathrm{HT}(T)\le \mathrm{HT}(P_n),
 $$
 
 with equality if and only if $T$ is isomorphic to the path $P_n$. The index sums, over unordered pairs of distinct vertices, the larger of the two expected first hitting times of simple random walk. For $n=1$ the empty sum is $0$; for $n=2$ the only tree has index $1$.
