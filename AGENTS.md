@@ -232,16 +232,27 @@ nix flake update nixpkgs        # deliberately, then review and commit flake.loc
 
 ## Markdown
 
-- Notes are Markdown with TeX math: `$...$` inline, `$$...$$` display.
+- Math typesetting: full GitHub-compatible KaTeX is allowed. Use any of
+  GitHub's math syntaxes:
+  - inline `$...$`, or ``$`...`$`` when the expression contains characters
+    Markdown would otherwise interpret (`_`, `*`, `\`, `|`);
+  - display `$$...$$` on its own lines, or a fenced ` ```math ` block;
+  - any KaTeX-supported command or environment (`aligned`, `cases`,
+    `pmatrix`, `\operatorname`, `\mathbb`, `\tag`, and so on).
+
+  Write for GitHub's renderer: no custom macro packages, no `\newcommand`
+  shared across blocks, and no raw HTML for math. Check a note on GitHub
+  (or in the PR's rich diff) when its math is complex.
 - One idea per paragraph; headings for structure; definitions, statements, and
   proofs clearly marked (`**Theorem.**`, `**Proof.**`, ending with ∎).
 - Link a note to the Lean declaration and Python script that back it, by
   repository path.
-- PDF (Pandoc's Typst template needs an explicit font; Typst bundles
-  New Computer Modern):
+- PDF: read the note as GitHub Markdown (`-f gfm`) so all the math syntaxes
+  above parse. Pandoc's Typst template needs an explicit font; Typst bundles
+  New Computer Modern:
 
   ```bash
-  pandoc note.md -o note.pdf --pdf-engine=typst -V mainfont="New Computer Modern"
+  pandoc -f gfm note.md -o note.pdf --pdf-engine=typst -V mainfont="New Computer Modern"
   ```
 
 ## Validation
